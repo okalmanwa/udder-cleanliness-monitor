@@ -76,11 +76,15 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
   }, [farmId])
 
   useEffect(() => {
-    setExportCSVHandler(() => () => exportToCSV(udders))
+    setExportCSVHandler(() => async () => {
+      await exportToCSV(udders)
+    })
   }, [udders, setExportCSVHandler])
 
   useEffect(() => {
-    setExportExcelHandler(() => () => exportToExcel(udders))
+    setExportExcelHandler(() => async () => {
+      await exportToExcel(udders)
+    })
   }, [udders, setExportExcelHandler])
 
   const fetchUdders = async () => {
@@ -250,11 +254,38 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
     return stats
   }
 
-  const exportToCSV = (udders: Udder[]) => {
-    const farmStats = calculateFarmStats(udders)
-    let timePeriod = 'All Time'
-    const filterLabel = DATE_FILTERS.find(f => f.value === dateFilter)?.label
-    if (filterLabel) timePeriod = filterLabel
+  const fetchAllExaminations = async (udders: Udder[]): Promise<Udder[]> => {
+    const updatedUdders = await Promise.all(
+      udders.map(async (udder) => {
+        try {
+          const response = await fetch(`/api/udders/${udder.id}/examinations`);
+          if (!response.ok) throw new Error('Failed to fetch examination details');
+          const examinations = await response.json();
+          return {
+            ...udder,
+            examinations: examinations.map((exam: any) => ({
+              id: exam.id,
+              score: exam.score,
+              exam_timestamp: exam.exam_timestamp,
+              images: exam.images || []
+            }))
+          };
+        } catch (err) {
+          console.error('Error fetching examination details:', err);
+          return udder;
+        }
+      })
+    );
+    return updatedUdders;
+  };
+
+  const exportToCSV = async (udders: Udder[]) => {
+    const uddersWithExaminations = await fetchAllExaminations(udders);
+    const farmStats = calculateFarmStats(uddersWithExaminations);
+    let timePeriod = 'All Time';
+    const filterLabel = DATE_FILTERS.find(f => f.value === dateFilter)?.label;
+    if (filterLabel) timePeriod = filterLabel;
+
     // Create summary section with pivoted data
     const summaryRows = [
       ['Farm Name', farmName],
@@ -274,23 +305,11 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
       [''],
       ['Detailed Examination Data'],
       ['']  // Empty row for separation
-    ]
+    ];
 
     // Create detailed data rows - one row per examination
-    const detailRows = udders.flatMap(udder =>
+    const detailRows = uddersWithExaminations.flatMap(udder =>
       (udder.examinations || [])
-        .filter(exam => {
-          switch (dateFilter) {
-            case '7d':
-              return new Date(exam.exam_timestamp) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            case '30d':
-              return new Date(exam.exam_timestamp) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            case '1y':
-              return new Date(exam.exam_timestamp) >= new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-            default:
-              return true
-          }
-        })
         .map(exam => [
           farmName,
           udder.id,
@@ -299,36 +318,37 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
           udder.position,
           exam.score,
           new Date(exam.exam_timestamp).toLocaleDateString(),
-          '' // Placeholder for images
+          exam.images?.join('; ') || '' // Include image URLs
         ])
-    ).sort((a, b) => new Date(b[6]).getTime() - new Date(a[6]).getTime()) // Sort by exam date, newest first
+    ).sort((a, b) => new Date(b[6]).getTime() - new Date(a[6]).getTime()); // Sort by exam date, newest first
 
     // Combine all sections
     const csvContent = [
       ...summaryRows.map(row => row.join(',')),
-      'Detailed Examination Data',
+      'Farm Name,Udder ID,Identifier,Cow Number,Position,Score,Exam Date,Images',
       ...detailRows.map(row => row.join(','))
-    ].join('\n')
+    ].join('\n');
 
     // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    const date = new Date().toISOString().split('T')[0]
-    link.setAttribute('download', `${farmName}-udder-examinations-${date}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    const date = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `${farmName}-udder-examinations-${date}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  const exportToExcel = (udders: Udder[]) => {
-    const farmStats = calculateFarmStats(udders)
-    
-    let timePeriod = 'All Time'
-    const filterLabel = DATE_FILTERS.find(f => f.value === dateFilter)?.label
-    if (filterLabel) timePeriod = filterLabel
+  const exportToExcel = async (udders: Udder[]) => {
+    const uddersWithExaminations = await fetchAllExaminations(udders);
+    const farmStats = calculateFarmStats(uddersWithExaminations);
+    let timePeriod = 'All Time';
+    const filterLabel = DATE_FILTERS.find(f => f.value === dateFilter)?.label;
+    if (filterLabel) timePeriod = filterLabel;
+
     // Create summary worksheet with pivoted data
     const summaryData = [
       ['Farm Name', farmName],
@@ -345,25 +365,13 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
       ['Score 2', farmStats.scoreDistribution[2]],
       ['Score 3', farmStats.scoreDistribution[3]],
       ['Score 4', farmStats.scoreDistribution[4]]
-    ]
+    ];
 
     // Create detailed data worksheet - one row per examination
     const detailData = [
       ['Farm Name', 'Udder ID', 'Identifier', 'Cow Number', 'Position', 'Score', 'Exam Date', 'Images'],
-      ...udders.flatMap(udder =>
+      ...uddersWithExaminations.flatMap(udder =>
         (udder.examinations || [])
-          .filter(exam => {
-            switch (dateFilter) {
-              case '7d':
-                return new Date(exam.exam_timestamp) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-              case '30d':
-                return new Date(exam.exam_timestamp) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-              case '1y':
-                return new Date(exam.exam_timestamp) >= new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-              default:
-                return true
-            }
-          })
           .map(exam => [
             farmName,
             udder.id,
@@ -372,26 +380,26 @@ export default function UdderGrid({ farmId, dateFilter, setExportCSVHandler, set
             udder.position,
             exam.score,
             new Date(exam.exam_timestamp).toLocaleDateString(),
-            '' // Placeholder for images
+            exam.images?.join('; ') || '' // Include image URLs
           ])
       ).sort((a, b) => new Date(b[6]).getTime() - new Date(a[6]).getTime()) // Sort by exam date, newest first
-    ]
+    ];
 
     // Create workbook with multiple sheets
-    const wb = XLSX.utils.book_new()
+    const wb = XLSX.utils.book_new();
     
     // Add summary sheet
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary')
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
     
     // Add detailed data sheet
-    const wsDetail = XLSX.utils.aoa_to_sheet(detailData)
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'Examinations')
+    const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'Examinations');
 
     // Generate Excel file with farm name in the title
-    const date = new Date().toISOString().split('T')[0]
-    XLSX.writeFile(wb, `${farmName}-udder-examinations-${date}.xlsx`)
-  }
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `${farmName}-udder-examinations-${date}.xlsx`);
+  };
 
   const openGallery = (images: string[], startIndex: number) => {
     setGalleryImages(images)
