@@ -170,7 +170,7 @@ export default function UdderAnalytics({ farmId, timeRange, setTimeRange, loadin
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <ScoreDistributionPieChart data={analyticsData.scoreDistribution} />
         <ScoreByPositionBarChart data={analyticsData.positionStats} />
-      </div>
+          </div>
       <AverageScorePerCow data={analyticsData.scoreByCow.map(cow => ({ cow: String(cow.cow_number), avgScore: cow.average }))} />
       <div className="mt-8 p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto w-full">
         <div className="flex flex-col md:flex-row items-center md:items-center justify-between mb-6 gap-4 md:gap-0">
@@ -188,14 +188,14 @@ export default function UdderAnalytics({ farmId, timeRange, setTimeRange, loadin
           <div className="flex-1 text-center">
             <h2 className="text-3xl font-extrabold text-green-900">{selectedFarm ? selectedFarm.name : 'Farm'} - Udder Health Analytics Report</h2>
             <p className="text-lg font-semibold text-gray-700 mt-1">Time Period: {timeRangeLabel}</p>
-          </div>
+        </div>
           <div className="flex-shrink-0 w-full md:w-auto">
-            <button
+              <button
               onClick={handleDownloadStory}
               className="w-full md:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold shadow hover:from-green-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-green-400 flex items-center justify-center gap-2"
             >
               <FaDownload /> Download Report
-            </button>
+              </button>
           </div>
         </div>
         <div className="text-left space-y-4 sm:space-y-6">
@@ -218,7 +218,7 @@ export default function UdderAnalytics({ farmId, timeRange, setTimeRange, loadin
                 <li key={d.score}>Score {d.score}: {d.count} examinations</li>
               ))}
             </ul>
-          </div>
+      </div>
           <div>
             <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Position Analysis</h3>
             <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
@@ -226,14 +226,14 @@ export default function UdderAnalytics({ farmId, timeRange, setTimeRange, loadin
                 <li key={d.position}>{d.position}: Average score of {d.averageScore.toFixed(2)}</li>
               ))}
             </ul>
-          </div>
+            </div>
           <div>
             <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Recommendations</h3>
             <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
               <li>Monitor closely: Some improvement needed in udder health</li>
               <li>Focus on {analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).position} position: Implement targeted care and monitoring</li>
             </ul>
-          </div>
+        </div>
         </div>
       </div>
     </div>

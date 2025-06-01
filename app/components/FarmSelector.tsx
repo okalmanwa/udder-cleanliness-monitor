@@ -57,8 +57,9 @@ export default function FarmSelector() {
         throw new Error(errorData.error || 'Failed to add farm')
       }
       const newFarm = await response.json()
-      setFarms((prev) => [...prev, newFarm])
-      setSelectedFarm(newFarm)
+      const mappedFarm = { id: newFarm.farm_id, name: newFarm.name, code: newFarm.code };
+      setFarms((prev) => [...prev, mappedFarm])
+      setSelectedFarm(mappedFarm)
       setShowAddFarm(false)
       setFarmName('')
       setFarmCode('')
@@ -145,8 +146,10 @@ export default function FarmSelector() {
                   value={farmCode}
                   onChange={e => setFarmCode(e.target.value)}
                   required
+                  maxLength={20}
                   className="w-full rounded-full border-2 border-green-200 bg-green-50 px-4 py-2 text-base font-medium text-green-900 focus:border-green-500 focus:ring-2 focus:ring-green-400"
                 />
+                <span className="text-xs text-gray-500 float-right">{farmCode.length}/20</span>
               </div>
               <div>
                 <label className="block text-base font-semibold text-green-800 mb-1">Number of Cows</label>

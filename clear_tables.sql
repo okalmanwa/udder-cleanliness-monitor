@@ -1,9 +1,12 @@
--- Clear tables in correct order (respecting foreign key constraints)
-TRUNCATE TABLE public.examinations CASCADE;
-TRUNCATE TABLE public.udders CASCADE;
-TRUNCATE TABLE public.farms CASCADE;
+-- Disable foreign key checks temporarily
+SET FOREIGN_KEY_CHECKS = 0;
 
--- Reset any sequences if they exist
-ALTER SEQUENCE IF EXISTS public.farms_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS public.udders_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS public.examinations_id_seq RESTART WITH 1; 
+-- Clear tables in reverse order of dependencies
+DELETE FROM udder_images;
+DELETE FROM udder_examinations;
+DELETE FROM udders;
+DELETE FROM cows;
+DELETE FROM farms;
+
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS = 1; 
