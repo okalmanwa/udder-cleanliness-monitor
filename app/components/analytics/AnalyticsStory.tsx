@@ -116,13 +116,12 @@ ${generateRecommendations(averageScore, bestPosition, worstPosition)}
   return (
     <div className="relative">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-semibold text-green-900">Analytics Story</h3>
         <button
           onClick={exportStory}
           disabled={isGenerating}
           className="px-4 py-2 bg-gradient-to-r from-green-400 to-blue-300 text-white rounded-full hover:from-green-500 hover:to-blue-400 disabled:opacity-50 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
         >
-          {isGenerating ? 'Generating...' : 'Export Story'}
+          {isGenerating ? 'Generating...' : 'Export Report'}
         </button>
       </div>
       <div className="prose prose-blue max-w-none">
