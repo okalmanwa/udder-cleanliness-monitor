@@ -5,12 +5,16 @@ import PositionAnalysisChart from './PositionAnalysisChart'
 import PositionTrendChart from './PositionTrendChart'
 import AnalyticsStory from './AnalyticsStory'
 import { useFarmStore } from '@/app/store/farmStore'
-import { FaChartBar } from 'react-icons/fa'
+import { FaChartBar, FaDownload } from 'react-icons/fa'
 import ExpandableChartCard from './ExpandableChartCard'
 import ExaminationsVolumeChart from './ExaminationsVolumeChart'
 import AverageScoreTrendChart from './AverageScoreTrendChart'
 import ScoreByCowChart from './ScoreByCowChart'
 import ScoreHeatmapChart from './ScoreHeatmapChart'
+import ScoreDistributionPieChart from './ScoreDistributionPieChart'
+import ScoreByPositionBarChart from './ScoreByPositionBarChart'
+import ScoreHeatmap from './ScoreHeatmap'
+import AverageScorePerCow from './AverageScorePerCow'
 
 type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all'
 
@@ -40,9 +44,16 @@ type AnalyticsData = {
   scoreHeatmapPositionMonth: { position: string; month: string; average: number }[]
 }
 
-export default function UdderAnalytics({ farmId }: { farmId: string }) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('30d')
-  const [loading, setLoading] = useState(true)
+interface UdderAnalyticsProps {
+  farmId: string
+  timeRange: string
+  setTimeRange: (range: string) => void
+  loading: boolean
+  setLoading: (loading: boolean) => void
+  handleRefresh: () => void
+}
+
+export default function UdderAnalytics({ farmId, timeRange, setTimeRange, loading, setLoading, handleRefresh }: UdderAnalyticsProps) {
   const [error, setError] = useState<string | null>(null)
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const selectedFarm = useFarmStore(state => state.selectedFarm)
@@ -84,9 +95,48 @@ export default function UdderAnalytics({ farmId }: { farmId: string }) {
     fetchAnalytics()
   }, [farmId, timeRange])
 
-  const handleRefresh = () => {
-    fetchAnalytics(true)
-  }
+  const handleDownloadStory = () => {
+    if (!analyticsData) return;
+
+    const story = `
+      ${selectedFarm ? selectedFarm.name : 'Farm'} - Udder Health Analytics Report
+      Time Period: the last ${timeRange} days
+      
+      Overview
+      Total Examinations: ${analyticsData.totalExaminations} Average Score: ${analyticsData.averageScore.toFixed(2)}
+      
+      Key Findings
+      The ${analyticsData.positionStats.reduce((a, b) => a.averageScore > b.averageScore ? a : b).position} position showed the best health with an average score of ${analyticsData.positionStats.reduce((a, b) => a.averageScore > b.averageScore ? a : b).averageScore.toFixed(2)}
+      The ${analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).position} position needs attention with an average score of ${analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).averageScore.toFixed(2)}
+      Score ${analyticsData.scoreDistribution.reduce((a, b) => a.count > b.count ? a : b).score} was the most common, appearing in ${analyticsData.scoreDistribution.reduce((a, b) => a.count > b.count ? a : b).count} examinations
+      
+      Score Distribution
+      ${analyticsData.scoreDistribution.map(d => `Score ${d.score}: ${d.count} examinations`).join('\n')}
+      
+      Position Analysis
+      ${analyticsData.positionStats.map(d => `${d.position}: Average score of ${d.averageScore.toFixed(2)}`).join('\n')}
+      
+      Recommendations
+      Monitor closely: Some improvement needed in udder health
+      Focus on ${analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).position} position: Implement targeted care and monitoring
+    `;
+
+    const blob = new Blob([story], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'udder-health-analytics-report.txt';
+    link.click();
+  };
+
+  // Map timeRange to human-friendly label
+  const timeRangeLabel = {
+    '7d': 'the last 7 days',
+    '30d': 'the last 30 days',
+    '90d': 'the last 90 days',
+    '1y': 'the last year',
+    'all': 'all available data',
+  }[timeRange] || timeRange;
 
   if (loading) {
     return (
@@ -117,85 +167,73 @@ export default function UdderAnalytics({ farmId }: { farmId: string }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 w-full">
-        {/* Left group: Title and Refresh */}
-        <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <FaChartBar className="text-green-500 text-2xl" />
-          <h2 className="text-2xl font-extrabold text-green-900 tracking-tight">Analytics</h2>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="px-3 py-1 rounded-full font-semibold shadow-sm transition-all duration-200 border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 text-sm bg-white text-green-900 border-green-200 hover:bg-green-50 hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-            title="Refresh analytics data"
-          >
-            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
-        {/* Right group: Filters */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          <div className="flex flex-wrap gap-2 items-center justify-center sm:justify-start">
-            {['7d', '30d', '90d', '1y', 'all'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range as TimeRange)}
-                className={`px-4 py-1 rounded-full font-semibold shadow-sm transition-all duration-200 border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 text-sm
-                  ${timeRange === range
-                    ? 'bg-gradient-to-r from-green-400 to-blue-300 text-white border-green-400 scale-105'
-                    : 'bg-white text-green-900 border-green-200 hover:bg-green-50 hover:scale-105'}`}
-              >
-                {range === '7d' ? 'Last 7 Days' :
-                  range === '30d' ? 'Last 30 Days' :
-                  range === '90d' ? 'Last 90 Days' :
-                  range === '1y' ? 'Last Year' : 'All Time'}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <ScoreDistributionPieChart data={analyticsData.scoreDistribution} />
+        <ScoreByPositionBarChart data={analyticsData.positionStats} />
       </div>
-
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <ExpandableChartCard title="">
-            <ScoreByCowChart data={analyticsData.scoreByCow} />
-          </ExpandableChartCard>
-
-          <ExpandableChartCard title="">
-            <div className="mb-4 flex flex-wrap gap-2 items-center">
-              <span className="font-semibold text-green-900">Filter by month:</span>
-              <button
-                className={`px-3 py-1 rounded-full font-semibold text-sm transition-all duration-200 ${selectedMonth === 'all' ? 'bg-green-500 text-white shadow-md' : 'bg-white text-green-900 border border-green-300 hover:bg-green-50'}`}
-                onClick={() => setSelectedMonth('all')}
-              >
-                All Time
-              </button>
-              {allMonths.map(month => (
-                <button
-                  key={month}
-                  className={`px-3 py-1 rounded-full font-semibold text-sm transition-all duration-200 ${selectedMonth === month ? 'bg-green-500 text-white shadow-md' : 'bg-white text-green-900 border border-green-300 hover:bg-green-50'}`}
-                  onClick={() => setSelectedMonth(month)}
-                >
-                  {month}
-                </button>
-              ))}
-            </div>
-            <ScoreHeatmapChart data={filteredHeatmapData} />
-          </ExpandableChartCard>
+      <AverageScorePerCow data={analyticsData.scoreByCow.map(cow => ({ cow: String(cow.cow_number), avgScore: cow.average }))} />
+      <div className="mt-8 p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto w-full">
+        <div className="flex flex-col md:flex-row items-center md:items-center justify-between mb-6 gap-4 md:gap-0">
+          <div className="flex-shrink-0 mb-2 md:mb-0">
+            <svg className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="24" fill="#22c55e"/>
+              <ellipse cx="24" cy="30" rx="12" ry="8" fill="#fff"/>
+              <ellipse cx="18" cy="20" rx="4" ry="6" fill="#fff"/>
+              <ellipse cx="30" cy="20" rx="4" ry="6" fill="#fff"/>
+              <ellipse cx="18" cy="20" rx="2" ry="3" fill="#222"/>
+              <ellipse cx="30" cy="20" rx="2" ry="3" fill="#222"/>
+              <ellipse cx="24" cy="32" rx="3" ry="2" fill="#222"/>
+            </svg>
+          </div>
+          <div className="flex-1 text-center">
+            <h2 className="text-3xl font-extrabold text-green-900">{selectedFarm ? selectedFarm.name : 'Farm'} - Udder Health Analytics Report</h2>
+            <p className="text-lg font-semibold text-gray-700 mt-1">Time Period: {timeRangeLabel}</p>
+          </div>
+          <div className="flex-shrink-0 w-full md:w-auto">
+            <button
+              onClick={handleDownloadStory}
+              className="w-full md:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold shadow hover:from-green-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-green-400 flex items-center justify-center gap-2"
+            >
+              <FaDownload /> Download Report
+            </button>
+          </div>
         </div>
-
-        <div className="bg-white/40 backdrop-blur-sm rounded-3xl shadow-lg p-8 transition-all duration-300 hover:shadow-xl hover:bg-white/50">
-          <AnalyticsStory
-            totalExaminations={analyticsData.totalExaminations}
-            averageScore={analyticsData.averageScore}
-            scoreDistribution={analyticsData.scoreDistribution}
-            positionStats={analyticsData.positionStats}
-            timeRange={timeRange}
-            farmName={selectedFarm?.name || 'Farm'}
-          />
+        <div className="text-left space-y-4 sm:space-y-6">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Overview</h3>
+            <p className="text-base sm:text-lg">Total Examinations: {analyticsData.totalExaminations} &nbsp; Average Score: {analyticsData.averageScore.toFixed(2)}</p>
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Key Findings</h3>
+            <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
+              <li>The {analyticsData.positionStats.reduce((a, b) => a.averageScore > b.averageScore ? a : b).position} position showed the best health with an average score of {analyticsData.positionStats.reduce((a, b) => a.averageScore > b.averageScore ? a : b).averageScore.toFixed(2)}</li>
+              <li>The {analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).position} position needs attention with an average score of {analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).averageScore.toFixed(2)}</li>
+              <li>Score {analyticsData.scoreDistribution.reduce((a, b) => a.count > b.count ? a : b).score} was the most common, appearing in {analyticsData.scoreDistribution.reduce((a, b) => a.count > b.count ? a : b).count} examinations</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Score Distribution</h3>
+            <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
+              {analyticsData.scoreDistribution.map(d => (
+                <li key={d.score}>Score {d.score}: {d.count} examinations</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Position Analysis</h3>
+            <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
+              {analyticsData.positionStats.map(d => (
+                <li key={d.position}>{d.position}: Average score of {d.averageScore.toFixed(2)}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 text-green-800">Recommendations</h3>
+            <ul className="list-disc pl-4 sm:pl-6 space-y-1 text-base sm:text-lg">
+              <li>Monitor closely: Some improvement needed in udder health</li>
+              <li>Focus on {analyticsData.positionStats.reduce((a, b) => a.averageScore < b.averageScore ? a : b).position} position: Implement targeted care and monitoring</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

@@ -29,20 +29,17 @@ export default function Dashboard() {
         {/* Right group: Filters and Export buttons */}
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <div className="flex flex-wrap gap-2 items-center justify-center sm:justify-start">
-            {DATE_FILTERS.map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setDateFilter(filter.value)}
-                className={`px-4 py-1 rounded-full font-semibold shadow-sm transition-all duration-200 border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 text-sm
-                  ${dateFilter === filter.value
-                    ? 'bg-gradient-to-r from-green-400 to-blue-300 text-white border-green-400 scale-105'
-                    : 'bg-white text-green-900 border-green-200 hover:bg-green-50 hover:scale-105'}`}
-              >
-                {filter.label}
-              </button>
-            ))}
+            <select
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+              className="px-4 py-1 rounded-full font-semibold shadow-sm border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 text-sm bg-white text-green-900 border-green-200 hover:bg-green-50"
+            >
+              {DATE_FILTERS.map((filter) => (
+                <option key={filter.value} value={filter.value}>{filter.label}</option>
+              ))}
+            </select>
           </div>
-          <div className="flex flex-wrap gap-2 items-center justify-center sm:justify-start">
+          <div className="flex flex-col sm:flex-row gap-2 items-center justify-center sm:justify-start">
             <button
               onClick={() => exportCSVHandler && exportCSVHandler()}
               className="px-4 py-1 rounded-full font-semibold bg-gradient-to-r from-green-400 to-blue-300 text-white shadow-md hover:from-green-500 hover:to-blue-400 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm flex items-center gap-2"

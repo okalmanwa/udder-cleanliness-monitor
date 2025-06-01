@@ -47,7 +47,15 @@ export default function FarmSelector() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: farmName, code: farmCode, numCows }),
       })
-      if (!response.ok) throw new Error('Failed to add farm')
+      if (!response.ok) {
+        const errorData = await response.json()
+        if (errorData.error && errorData.error.includes('duplicate key value')) {
+          setAddError('A farm with this code already exists. Please use a different code.')
+        } else {
+          setAddError(errorData.error || 'Failed to add farm. Please try again.')
+        }
+        throw new Error(errorData.error || 'Failed to add farm')
+      }
       const newFarm = await response.json()
       setFarms((prev) => [...prev, newFarm])
       setSelectedFarm(newFarm)
@@ -56,7 +64,7 @@ export default function FarmSelector() {
       setFarmCode('')
       setNumCows(1)
     } catch (err) {
-      setAddError('Failed to add farm. Please try again.')
+      if (!addError) setAddError('Failed to add farm. Please try again.')
     } finally {
       setAddLoading(false)
     }
@@ -108,9 +116,10 @@ export default function FarmSelector() {
         <button
           type="button"
           onClick={() => setShowAddFarm(true)}
-          className="ml-2 px-3 py-1 rounded-full bg-gradient-to-r from-green-400 to-blue-300 text-white font-semibold flex items-center gap-2 shadow hover:from-green-500 hover:to-blue-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className="ml-2 px-2 py-1 rounded-full bg-gradient-to-r from-green-400 to-blue-300 text-white font-semibold flex items-center gap-2 shadow hover:from-green-500 hover:to-blue-400 focus:outline-none focus:ring-2 focus:ring-green-400"
         >
-          <FaPlus /> Add Farm
+          <FaPlus className="text-base" />
+          <span className="hidden md:inline">Add Farm</span>
         </button>
       </div>
       {/* Add Farm Modal */}

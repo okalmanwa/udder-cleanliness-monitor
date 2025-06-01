@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.className}>
       <body className="min-h-screen flex flex-col">
-        <div className="flex-grow pb-16">
+        <div className="flex-grow">
           {/* <Navbar /> Removed old navbar */}
           {children}
         </div>
