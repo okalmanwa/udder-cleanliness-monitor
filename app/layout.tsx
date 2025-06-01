@@ -22,11 +22,6 @@ export default function RootLayout({
           {/* <Navbar /> Removed old navbar */}
           {children}
         </div>
-        <footer className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-green-400 to-blue-300 text-green-900 py-3 px-6 shadow-md">
-          <div className="container mx-auto text-center">
-            <p className="text-sm font-medium">© {new Date().getFullYear()} UdderHygiene Monitor. All rights reserved.</p>
-          </div>
-        </footer>
       </body>
     </html>
   )
